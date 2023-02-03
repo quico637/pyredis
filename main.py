@@ -1,0 +1,125 @@
+import argparse
+import logging
+import socket
+import sys
+import select
+import os
+
+from Parser import Parser
+import Redis
+
+from posixpath import split
+import socket
+import select
+import argparse     # Leer parametros de ejecución
+import os           # Obtener ruta y extension
+import logging
+
+
+BUFSIZE = 8192 # Tamaño máximo del buffer que se puede utilizar
+TIMEOUT_CONNECTION = 3600 # Timout para la conexión persistente
+
+
+redis = Redis.Redis()
+
+def cerrar_conexion(cs):
+    """ Esta función cierra una conexión activa.
+    """
+    try: 
+        cs.close()
+    except socket.error:
+        pass
+
+
+def recibir_mensaje(cs):
+    """ Esta función recibe datos a través del socket cs
+        Leemos la información que nos llega. recv() devuelve un string con los datos.
+    """
+    try:
+        datos = cs.recv(BUFSIZE)
+    except BlockingIOError:
+        print("Exception: recibir_mensaje(). Resource temporarily unaviable.", file=sys.stderr)
+    
+    return datos.decode()
+
+def enviar_mensaje(cs, data):
+    """ Esta función envía datos (data) a través del socket cs
+        Devuelve el número de bytes enviados.
+    """
+    try: 
+        return cs.send(data)
+    except BlockingIOError:
+        print("Exception: enviar_mensaje(). Resource temporarily unaviable.", file=sys.stderr)
+
+def process_web_request(cs, webroot, addr_cliente):
+
+    while(True):
+        rsublist, wsublist, xsublist = select.select([cs], [], [], TIMEOUT_CONNECTION)
+
+        # * Si es por timeout, se cierra el socket tras el período de persistencia.
+        if(not rsublist):    
+            print("\n\nHa saltado el Timeout.", file=sys.stderr)
+            cerrar_conexion(cs)
+            sys.exit(-1)
+            
+
+        data = recibir_mensaje(cs)
+
+        if(not data):   
+            cerrar_conexion(cs)
+            sys.exit(-1)
+
+        enviar_mensaje(redis.execute(data))
+
+
+        
+        
+
+
+def main():
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-p", "--port", help="Puerto del servidor", type=int, required=True)
+    parser.add_argument('--verbose', '-v', action='store_true', help='Incluir mensajes de depuración en la salida')
+    args = parser.parse_args()
+
+    logger = logging.getLogger()
+
+
+    if args.verbose:
+        logger.setLevel(logging.DEBUG)
+
+    logger.info('Enabling server in port {}.'.format(args.port))
+
+
+    #Con with, se gestiona tambien los try except.
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0) as s1:
+        
+        s1.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+        s1.bind(("127.0.0.1", args.port))
+
+        s1.listen(64)
+
+        while(True):
+            try:
+                new_socket, addr_cliente = s1.accept()
+            except socket.error:
+                print("Error: accept del socket", file = sys.stderr)
+                s1.close()
+                
+
+            pid = os.fork()
+            if(pid < 0):
+                print("Error en el hijo1", file = sys.stderr)
+            elif(pid == 0):
+                s1.close()      #porque son descriptores de ficheros y no van a usar los sockets correspondientes. s1 lo usa el padre para las peticiones, y el otro lo usa el hijo para crear sus hilicos
+                process_web_request(new_socket, args.webroot, addr_cliente)
+            else:                       # proceso padre
+                new_socket.close()
+
+
+
+if __name__ == "__main__":
+    main()
+
