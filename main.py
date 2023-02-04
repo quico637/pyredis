@@ -65,7 +65,7 @@ def process_web_request(cs):
             cerrar_conexion(cs)
             sys.exit(1)
 
-        print(data)
+        print(f"+ cmd: {data.strip()}")
         if data.strip() == "EXIT":
             enviar_mensaje(cs, f"pyredis> exiting...\n")
             cerrar_conexion(cs)
@@ -74,7 +74,7 @@ def process_web_request(cs):
         res = redis.execute(data)
 
         if res:
-            print(f"res: {res}")
+            print(f"+ res: {res}")
             enviar_mensaje(cs, f"pyredis> {res}\n")
         else:
             enviar_mensaje(cs, f"pyredis> please enter a valid command - SET key value, GET key, DEL key, EXIT\n")
@@ -85,8 +85,6 @@ def process_web_request(cs):
 
 
 def main():
-
-    print("hola1")
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-p", "--port", help="Puerto del servidor", type=int, required=True)
@@ -111,15 +109,16 @@ def main():
 
         s1.listen(64)
 
-        print("hola")
 
         while(True):
             try:
                 new_socket, addr_cliente = s1.accept()
+
             except socket.error:
                 print("Error: accept del socket", file = sys.stderr)
                 s1.close()
-                
+            
+            print(f"- Request from {addr_cliente}")
             x = threading.Thread(target= process_web_request, args=[new_socket])
             x.start()
 

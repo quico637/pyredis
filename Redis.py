@@ -4,7 +4,7 @@ class Redis():
     def __init__(self) -> None:
         self.map = {}
 
-    def execute(self, str : str):
+    def execute(self, str : str) -> str:
 
         cmd = Parser.parse(str=str)
 

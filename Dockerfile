@@ -1,6 +1,10 @@
 FROM python:3.8-slim-buster
 
+WORKDIR /app
+
 COPY . .
+
+RUN pip install -r requirements.txt
 
 # Change this to correspond with last CMD parameter
 EXPOSE 8080
