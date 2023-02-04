@@ -38,4 +38,8 @@ CMD [ "python3", "main.py", "-p" , "port_number"]
 
 ```
 
+# Changing code
+
+You need to remove the image and create it again every time you want to add a new feature to the container. You can change de **COPY** directive and change it to a volume. That way you will not need to restart anything.
+
 # Running tests

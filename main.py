@@ -4,16 +4,12 @@ import socket
 import sys
 import select
 import os
+import threading
+
 
 from Parser import Parser
 import Redis
 
-from posixpath import split
-import socket
-import select
-import argparse     # Leer parametros de ejecución
-import os           # Obtener ruta y extension
-import logging
 
 
 BUFSIZE = 8192 # Tamaño máximo del buffer que se puede utilizar
@@ -71,8 +67,8 @@ def process_web_request(cs):
 
         print(data)
         if data.strip() == "EXIT":
-            cerrar_conexion(cs)
             enviar_mensaje(cs, f"pyredis> exiting...\n")
+            cerrar_conexion(cs)
             sys.exit(0)
 
         res = redis.execute(data)
@@ -124,14 +120,8 @@ def main():
                 print("Error: accept del socket", file = sys.stderr)
                 s1.close()
                 
-            pid = os.fork()
-            if(pid < 0):
-                print("Error en el hijo1", file = sys.stderr)
-            elif(pid == 0):
-                s1.close()      #porque son descriptores de ficheros y no van a usar los sockets correspondientes. s1 lo usa el padre para las peticiones, y el otro lo usa el hijo para crear sus hilicos
-                process_web_request(new_socket)
-            else:                       # proceso padre
-                new_socket.close()
+            x = threading.Thread(target= process_web_request, args=[new_socket])
+            x.start()
 
 
 
