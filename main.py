@@ -47,11 +47,11 @@ def enviar_mensaje(cs, data):
         Devuelve el número de bytes enviados.
     """
     try: 
-        return cs.send(data)
+        return cs.send(data.encode())
     except BlockingIOError:
         print("Exception: enviar_mensaje(). Resource temporarily unaviable.", file=sys.stderr)
 
-def process_web_request(cs, webroot, addr_cliente):
+def process_web_request(cs):
 
     while(True):
         rsublist, wsublist, xsublist = select.select([cs], [], [], TIMEOUT_CONNECTION)
@@ -65,11 +65,23 @@ def process_web_request(cs, webroot, addr_cliente):
 
         data = recibir_mensaje(cs)
 
-        if(not data):   
+        if(not data):
             cerrar_conexion(cs)
-            sys.exit(-1)
+            sys.exit(1)
 
-        enviar_mensaje(redis.execute(data))
+        print(data)
+        if data.strip() == "EXIT":
+            cerrar_conexion(cs)
+            enviar_mensaje(cs, f"pyredis> exiting...\n")
+            sys.exit(0)
+
+        res = redis.execute(data)
+
+        if res:
+            print(f"res: {res}")
+            enviar_mensaje(cs, f"pyredis> {res}\n")
+        else:
+            enviar_mensaje(cs, f"pyredis> please enter a valid command - SET key value, GET key, DEL key, EXIT\n")
 
 
         
@@ -77,6 +89,8 @@ def process_web_request(cs, webroot, addr_cliente):
 
 
 def main():
+
+    print("hola1")
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-p", "--port", help="Puerto del servidor", type=int, required=True)
@@ -97,9 +111,11 @@ def main():
         
         s1.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
-        s1.bind(("127.0.0.1", args.port))
+        s1.bind(("0.0.0.0", args.port))
 
         s1.listen(64)
+
+        print("hola")
 
         while(True):
             try:
@@ -108,13 +124,12 @@ def main():
                 print("Error: accept del socket", file = sys.stderr)
                 s1.close()
                 
-
             pid = os.fork()
             if(pid < 0):
                 print("Error en el hijo1", file = sys.stderr)
             elif(pid == 0):
                 s1.close()      #porque son descriptores de ficheros y no van a usar los sockets correspondientes. s1 lo usa el padre para las peticiones, y el otro lo usa el hijo para crear sus hilicos
-                process_web_request(new_socket, args.webroot, addr_cliente)
+                process_web_request(new_socket)
             else:                       # proceso padre
                 new_socket.close()
 
