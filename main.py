@@ -3,20 +3,41 @@ import logging
 import socket
 import sys
 import select
-import os
 import threading
+import json
+import time
+import os
+from pathlib import Path
 
-
-from Parser import Parser
 import Redis
 
 
 
 BUFSIZE = 8192 # Tamaño máximo del buffer que se puede utilizar
 TIMEOUT_CONNECTION = 3600 # Timout para la conexión persistente
+BACKUP_TIME = 60        #Time between backups in seconds
+JSON_FILE = '.pyredis.json'
 
 
-redis = Redis.Redis()
+def save(map):
+    with open(JSON_FILE, "w") as write_file:
+        json.dump(map, write_file)
+
+def load():
+    with open(JSON_FILE, "r+") as json_file:
+        data = json.load(json_file)
+        return data
+
+redis = None
+if not os.path.exists(JSON_FILE):
+    Path(JSON_FILE).touch(exist_ok=True)
+    redis = Redis.Redis()
+else: 
+    redis = Redis.Redis(load())
+
+
+
+
 
 def cerrar_conexion(cs):
     """ Esta función cierra una conexión activa.
@@ -80,18 +101,36 @@ def process_web_request(cs):
             enviar_mensaje(cs, f"pyredis> please enter a valid command - SET key value, GET key, DEL key, EXIT\n")
 
 
-        
-        
 
+def save_thread(t):
+
+    if t == None:
+        t = BACKUP_TIME
+
+    while True:
+        time.sleep(t)
+        print('Persistence Thread saved current data.')
+        save(redis.map)
 
 def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-p", "--port", help="Puerto del servidor", type=int, required=True)
+    parser.add_argument("-t", "--time", help="time rate between backups", type=int, required=False)
+    parser.add_argument("-s", "--save", help="Enable persistence", action='store_true', required=False)
     parser.add_argument('--verbose', '-v', action='store_true', help='Incluir mensajes de depuración en la salida')
     args = parser.parse_args()
 
     logger = logging.getLogger()
+
+    t = None
+    if args.time:
+        t = args.time
+
+    if args.save:
+        save_t = threading.Thread(target=save_thread, args=[t])
+        save_t.start()
+
 
 
     if args.verbose:

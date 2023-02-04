@@ -8,6 +8,17 @@ In memory database. This is a lightweight, innefficient implementation of Redis 
 - Docker
 - Telnet
 
+# Options
+
+|  Option | Full name | Description | Required | Default value
+|---|--- | --- | ---|--- |
+| -p | --port | Port which PyRedis will listen | Yes 
+| -s | --save | Enable persistence | No | Not activated
+| -t | --time |  time rate between backups | No | 60s
+| -v | --verbose | Include debug directives | No | Not activated
+
+
+
 # Running
 You can also use the makefile.
 
@@ -16,6 +27,9 @@ cd pyredis
 docker build -t pyredis .
 docker run -it -p 8080:8080 pyredis
 ```
+
+Be sure you change **Dockerfile** taking into consideration the previous table. This is just an example.
+
 
 # Connecting
 

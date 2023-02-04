@@ -10,4 +10,5 @@ RUN pip install -r requirements.txt
 EXPOSE 8080
 
 # Change last option for setting default port
-CMD [ "python3", "main.py", "-p" , "8080"] 
+# -s option is for persistence
+CMD [ "python3", "main.py", "-s", "-t", "30", "-p", "8080"] 

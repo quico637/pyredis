@@ -1,8 +1,9 @@
 from Parser import Parser
 
 class Redis():
-    def __init__(self) -> None:
-        self.map = {}
+
+    def __init__(self, map={}) -> None:
+        self.map = map
 
     def execute(self, str : str) -> str:
 
@@ -13,7 +14,6 @@ class Redis():
 
 
         if(cmd.cmd == "GET"):
-            print(cmd.args[0])
             if cmd.args[0] not in self.map:
                 return f"key {cmd.args[0]} NOT FOUND"
             return self.map[cmd.args[0]]
